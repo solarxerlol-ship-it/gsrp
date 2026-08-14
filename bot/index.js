@@ -256,3 +256,4 @@ client.once(Events.ClientReady, () => {
 });
 
 client.login(token);
+// exports for testing
