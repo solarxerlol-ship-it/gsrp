@@ -1,0 +1,17 @@
+{
+  "name": "gsrp-bot",
+  "version": "1.0.0",
+  "description": "Georgia State Roleplay — Discord Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2",
+    "mongodb": "^7.5.0",
+    "mongoose": "^9.9.2",
+    "ms": "^2.1.3"
+  }
+}
