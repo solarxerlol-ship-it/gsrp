@@ -151,8 +151,81 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  res.writeHead(404);
-  res.end("Not found");
+  // ── POST /internal/promotion — triggered by web portal ──────────────────
+  if (req.method === "POST" && req.url === "/internal/promotion") {
+    const secret = req.headers["x-portal-secret"];
+    if (!secret || secret !== process.env.PORTAL_INTERNAL_SECRET) {
+      res.writeHead(401);
+      return res.end(JSON.stringify({ error: "Unauthorized" }));
+    }
+
+    let body = "";
+    req.on("data", chunk => { body += chunk; });
+    req.on("end", async () => {
+      try {
+        const { userId, type, fromRoleId, toRoleId, fromRoleName, toRoleName, notes, approvedById, approvedByName, executorId, executorName } = JSON.parse(body);
+
+        if (!userId || !type || !toRoleId) {
+          res.writeHead(400);
+          return res.end(JSON.stringify({ error: "Missing required fields" }));
+        }
+
+        const { buildContainer, heading, sep, text, HeadingLevel } = require("./utils/container");
+        const { emojis, channels } = require("./config");
+
+        const guild = client.guilds.cache.get(process.env.GUILD_ID);
+        if (!guild) {
+          res.writeHead(503);
+          return res.end(JSON.stringify({ error: "Guild not cached yet" }));
+        }
+
+        // Apply role changes in Discord
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (member) {
+          if (fromRoleId) await member.roles.remove(fromRoleId).catch(() => {});
+          await member.roles.add(toRoleId).catch(() => {});
+          console.log(`[PORTAL] Role change applied for ${userId}: ${fromRoleName} → ${toRoleName}`);
+        } else {
+          console.warn(`[PORTAL] User ${userId} not in guild — role change skipped`);
+        }
+
+        // Post the same container format as /promote
+        const isPromotion = type === "PROMOTION";
+        const payload = buildContainer(
+          [
+            heading(`${emojis.info}  Information`, HeadingLevel.Two),
+            sep(false),
+            text(`${emojis.user}  **User:** <@${userId}> ( ${userId} )`),
+            text(`${emojis.member}  **Signee:** ${executorId ? `<@${executorId}>` : `**${executorName}**`} — 🌐 Web Portal`),
+            sep(true),
+            heading(`${emojis.folder}  Details`, HeadingLevel.Two),
+            sep(false),
+            text(`${emojis.promote}  **${isPromotion ? "Promotion" : capitalize(type)}:** ${fromRoleId ? `<@&${fromRoleId}>` : fromRoleName || "—"} → <@&${toRoleId}>`),
+            ...(notes ? [text(`${emojis.note}  **Notes:** ${notes}`)] : []),
+            text(`${emojis.member}  **Approvals:** ${approvedById ? `<@${approvedById}>` : approvedByName || executorName || "Web Portal"}`),
+          ],
+          isPromotion ? "success" : "danger",
+          { category: "promotions" }
+        );
+
+        const logCh = guild.channels.cache.get(channels.promotionLog)
+          ?? await guild.channels.fetch(channels.promotionLog).catch(() => null);
+
+        if (logCh) {
+          await logCh.send({ ...payload, allowedMentions: { parse: [] } });
+          console.log(`[PORTAL] Promotion (${type}) posted to Discord for user ${userId}`);
+        }
+
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        console.error("[PORTAL] Internal promotion error:", err.message);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
 });
 
 server.listen(process.env.PORT || 3000, () => {
