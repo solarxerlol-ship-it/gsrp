@@ -26,7 +26,7 @@ module.exports = {
     const reason = interaction.options.getString("reason");
     const desc   = interaction.options.getString("description") ?? "";
 
-    const infraction = db.addInfraction(target.id, {
+    const infraction = await db.addInfraction(target.id, {
       type, reason, description: desc,
       moderator: interaction.user.id,
       guild: interaction.guild.id,

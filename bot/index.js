@@ -99,6 +99,12 @@ const server = http.createServer(async (req, res) => {
     req.on("end", async () => {
       try {
         const { caseId, userId, type, reason, description, moderatorId, moderatorName } = JSON.parse(body);
+
+        if (!caseId || !userId || !type || !reason) {
+          res.writeHead(400);
+          return res.end(JSON.stringify({ error: "Missing required fields" }));
+        }
+
         const { buildContainer, heading, sep, text, HeadingLevel } = require("./utils/container");
         const { emojis, channels } = require("./config");
 
@@ -113,15 +119,14 @@ const server = http.createServer(async (req, res) => {
             heading(`${emojis.info}  Information`, HeadingLevel.Two),
             sep(false),
             text(`${emojis.user}  **User:** <@${userId}> ( ${userId} )`),
-            text(`${emojis.member}  **Executor:** ${moderatorId ? `<@${moderatorId}>` : moderatorName} (Web Portal)`),
+            text(`${emojis.member}  **Executor:** ${moderatorId ? `<@${moderatorId}>` : `**${moderatorName}**`} — 🌐 Web Portal`),
             sep(true),
             heading(`${emojis.folder}  Details`, HeadingLevel.Two),
             sep(false),
             text(`${emojis.promote}  **Punishment:** ${type}`),
             text(`${emojis.note}  **Reason:** ${reason}`),
             ...(description ? [text(`${emojis.note}  **Description:** ${description}`)] : []),
-            text(`${emojis.member}  **Case ID:** #${caseId}`),
-            text(`${emojis.globe}  **Source:** 🌐 Web Portal`),
+            text(`${emojis.case}  **Case ID:** #${caseId}`),
           ],
           "danger",
           { category: "infractions" }
