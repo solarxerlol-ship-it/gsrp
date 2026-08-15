@@ -108,7 +108,7 @@ async function handleSelectType(interaction) {
     return ephemeral(interaction, "❌  That ticket type does not exist.");
   }
 
-  const existing = ticketDb.getUserOpenTicket(interaction.user.id, type);
+  const existing = await ticketDb.getUserOpenTicket(interaction.user.id, type);
   if (existing) {
     return ephemeral(interaction,
       `❌  You already have an open **${typeInfo.label}** ticket — <#${existing.channelId}>.`
@@ -147,7 +147,7 @@ async function handleOpen(interaction) {
   }
 
   // Re-check for duplicates in case they had two modals open
-  const existing = ticketDb.getUserOpenTicket(interaction.user.id, type);
+  const existing = await ticketDb.getUserOpenTicket(interaction.user.id, type);
   if (existing) {
     return ephemeral(interaction,
       `❌  You already have an open **${typeInfo.label}** ticket — <#${existing.channelId}>.`
@@ -199,7 +199,7 @@ async function handleOpen(interaction) {
     permissionOverwrites: overwrites,
   });
 
-  const ticket = ticketDb.createTicket({
+  const ticket = await ticketDb.createTicket({
     userId:    interaction.user.id,
     type,
     channelId: channel.id,
@@ -271,7 +271,7 @@ async function handleOpen(interaction) {
 // CLAIM
 // ─────────────────────────────────────────────────────────────────────────────
 async function handleClaim(interaction) {
-  const ticket = ticketDb.getTicket(interaction.channel.id);
+  const ticket = await ticketDb.getTicket(interaction.channel.id);
 
   if (!ticket) {
     return ephemeral(interaction, "❌  This can only be used inside a ticket channel.");
@@ -280,7 +280,7 @@ async function handleClaim(interaction) {
     return ephemeral(interaction, `❌  This ticket has already been claimed by <@${ticket.claimedBy}>.`);
   }
 
-  ticketDb.claimTicket(interaction.channel.id, interaction.user.id);
+  await ticketDb.claimTicket(interaction.channel.id, interaction.user.id);
 
   // Acknowledge silently, then send container to channel
   await interaction.reply({ content: "\u200b", flags: MessageFlags.Ephemeral });
